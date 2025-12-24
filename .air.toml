@@ -1,0 +1,21 @@
+# webservicego/.air.toml
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Perintah untuk build dan jalankan server
+cmd = "go run main.go"
+# Buat binary sementara
+bin = "tmp/main"
+# Rebuild otomatis saat file berubah
+full_bin = true
+# File yang dipantau
+include_ext = ["go"]
+
+[color]
+main = "yellow"
+watcher = "cyan"
+
+[ignore]
+# Folder yang tidak perlu dipantau
+files = ["tmp/*", "vendor/*", ".git/*"]

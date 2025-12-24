@@ -1,0 +1,44 @@
+# ==============================
+# Go build / output
+# ==============================
+# Binary yang dihasilkan saat build
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Folder hasil build
+/bin/
+pkg/
+
+# ==============================
+# Dependency management
+# ==============================
+# Jika tidak ingin menyertakan vendor, bisa di-ignore
+/vendor/
+
+# ==============================
+# Air live reload / temp files
+# ==============================
+# File sementara atau cache yang dibuat Air
+tmp/
+*.tmp
+
+# ==============================
+# IDE / Editor
+# ==============================
+# Folder/editor spesifik
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+
+# ==============================
+# Log / runtime files
+# ==============================
+*.log
+
+.env
