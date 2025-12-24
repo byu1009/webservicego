@@ -3,6 +3,7 @@ package profile
 import (
 	"net/http"
 	"webservicego/app/models"
+	"webservicego/app/utils"
 	"webservicego/config"
 
 	"github.com/gin-gonic/gin"
@@ -27,12 +28,24 @@ func Show(c *gin.Context) {
 		return
 	}
 
+	token, err := utils.GetToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed generate token",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"id":            user.ID,
-		"nip":           user.NIP,
-		"user_access":   user.UserAccess,
-		"group_access":  user.GroupAccess,
-		"last_activity": user.LastActivity,
-		"token" : "menggunakan fungsi get token",
+		"code"		: 200,
+		"message"	: "Ok",
+		"data"		: gin.H{
+			"id":            user.ID,
+			"nip":           user.NIP,
+			"user_access":   user.UserAccess,
+			"group_access":  user.GroupAccess,
+			"last_activity": user.LastActivity,
+		},
+		"token":         token,
 	})
 }
