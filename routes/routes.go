@@ -27,6 +27,20 @@ func SetupRoutes(r *gin.Engine) {
 
 		// SERVICE ANTROL BPJS KESEHATAN
 		protected.GET("/antrol/ref-poli", antrolController.RefPoli)
-		// protected.GET("/antrol/ref-dokter", antrolController.RefDokter)
+		protected.GET("/antrol/ref-dokter", antrolController.RefDokter)
+		protected.POST("/antrol/jadwal-dokter", antrolController.JadwalDokter)
+		protected.GET("/antrol/ref-fingerprint", antrolController.RefFingerpoli)
+		protected.POST("/antrol/ref-pasien-fingerprint", antrolController.RefPasienFingerpoli)
+		protected.POST("/antrol/tambah-antrean", antrolController.TambahAntrean)
+		protected.POST("/antrol/tambah-antrean-farmasi", antrolController.TambahAntreanFarmasi)
+		protected.POST("/antrol/update-waktu-antrean", antrolController.UpdateWaktuAntrean)
+		protected.POST("/antrol/batal-antrean", antrolController.BatalAntrean)
+
+		protected.POST("/antrol/list-taskid", antrolController.ListTaskid)
+		
+		protected.POST("/antrol/antrean-per-tanggal", antrolController.AntreanPerTanggal)
+		protected.POST("/antrol/antrean-per-kodebooking", antrolController.AntreanPerKodebooking)
+		protected.GET("/antrol/belum-dilayani", antrolController.AntreanBelumDilayani)
+		protected.POST("/antrol/belum-dilayani-detail", antrolController.AntreanBelumDilayaniDetail)
 	}
 }
