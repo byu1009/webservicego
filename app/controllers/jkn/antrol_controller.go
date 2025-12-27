@@ -823,22 +823,21 @@ func UpdateWaktuAntrean(c *gin.Context) {
 }
 
 func BatalAntrean(c *gin.Context) {
+	// 1. Validasi request
 	var req struct {
-		KodeBooking		string  `json:"kodebooking" binding:"required"`
-		Keterangan      string  `json:"keterangan" binding:"required"`
+		KodeBooking string `json:"kodebooking" binding:"required"`
+		Keterangan  string `json:"keterangan" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 
-		// Validation error (required, type, dll)
 		if ve, ok := err.(validator.ValidationErrors); ok {
-
 			errorMessages := map[string]string{
-				"KodeBooking"	: "kodebooking wajib diisi",
-				"Keterangan"	: "keterangan wajib diisi",
+				"KodeBooking": "kodebooking wajib diisi",
+				"Keterangan":  "keterangan wajib diisi",
 			}
 
-			fe := ve[0] // ambil error pertama
+			fe := ve[0]
 			msg, ok := errorMessages[fe.Field()]
 			if !ok {
 				msg = "request tidak valid"
@@ -851,7 +850,6 @@ func BatalAntrean(c *gin.Context) {
 			return
 		}
 
-		// selain validation error (type mismatch, overflow, dll)
 		c.JSON(http.StatusOK, gin.H{
 			"code":    204,
 			"message": "request tidak valid",
@@ -859,7 +857,7 @@ func BatalAntrean(c *gin.Context) {
 		return
 	}
 
-	// 2. Load BPJS config
+	// 2. Load config BPJS
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -896,7 +894,17 @@ func BatalAntrean(c *gin.Context) {
 		return
 	}
 
-	// 5. Decrypt response (TANPA LZSTRING)
+	// 5. 🔥 HANDLE RESPONSE NIL / KOSONG
+	if res.Response == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    200,
+			"message": "Response BPJS Kosong",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 6. Decrypt response (HANYA JIKA ADA ISI)
 	plain, err := bpjs.DecryptResponse(
 		res.Response,
 		cfg.ConsID,
@@ -913,7 +921,7 @@ func BatalAntrean(c *gin.Context) {
 		return
 	}
 
-	// 6. Decode JSON
+	// 7. Decode JSON
 	var data any
 	if err := json.Unmarshal([]byte(plain), &data); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -924,7 +932,7 @@ func BatalAntrean(c *gin.Context) {
 		return
 	}
 
-	// 7. Response sukses
+	// 8. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "Ok",

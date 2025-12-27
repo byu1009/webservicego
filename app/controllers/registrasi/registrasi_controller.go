@@ -75,3 +75,5 @@ func GetData(c *gin.Context) {
 		"token"		: token,
 	})
 }
+
+func PostData(c *gin.Context){}
