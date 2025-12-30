@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"webservicego/config"
 	"webservicego/routes"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,12 @@ import (
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Gagal load file .env")
+	}
+	
+	config.LoadConfig()
+	
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")

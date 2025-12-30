@@ -27,5 +27,5 @@ type ReferensiMobilejknBpjs struct {
 }
 
 func (ReferensiMobilejknBpjs) TableName() string {
-	return "referensi_mobiljkn_bpjs"
+	return "referensi_mobilejkn_bpjs"
 }

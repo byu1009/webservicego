@@ -23,7 +23,9 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		protected.GET("/profile", profileController.Show)
 
+		// REGISTRASI PENDAFTARAN
 		protected.POST("/registrasi/getdata", registrasiController.GetData)
+		protected.POST("/registrasi/postdata", registrasiController.PostData)
 
 		// SERVICE ANTROL BPJS KESEHATAN
 		protected.GET("/antrol/ref-poli", antrolController.RefPoli)
