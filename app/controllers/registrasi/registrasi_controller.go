@@ -9,6 +9,7 @@ import (
 	"time"
 	"webservicego/app/helpers"
 	"webservicego/app/models"
+	"webservicego/app/services/bpjs"
 	"webservicego/app/utils"
 	"webservicego/config"
 
@@ -343,11 +344,6 @@ func PostData(c *gin.Context) {
 		return
 	}
 
-	// c.JSON(200, gin.H{
-	// 	"nobooking": noBooking,
-	// })
-	// return
-
 	nomorReferensi := "-"
 	if req.NoReferensi != nil {
 		nomorReferensi = *req.NoReferensi
@@ -394,21 +390,90 @@ func PostData(c *gin.Context) {
 		EstimasiDilayani:  	strconv.FormatInt(estimasiMs, 10),
 		SisaKuotaJkn: 		intFromInterface(results[0]["sisa_kuota"]),
 		KuotaJkn: 			intFromInterface(results[0]["kuota"]),
-		SisKuotaNonJkn: 	intFromInterface(results[0]["sisa_kuota"]),
+		SisaKuotaNonJkn: 	intFromInterface(results[0]["sisa_kuota"]),
 		KuotaNonJkn: 		intFromInterface(results[0]["kuota"]),
 		Status: 			"Belum",
 		Validasi: 			"0000-00-00 00-00-00",
 		StatusKirim: 		"Belum",
 	}
 
-	if err := tx.Create(&regAntrol).Error; err != nil {
-		tx.Rollback()
-		c.JSON(500, gin.H{"message": "Gagal insert referensi mobile jkn", "error": err.Error()})
-		return
+	// if err := tx.Create(&regAntrol).Error; err != nil {
+	// 	tx.Rollback()
+	// 	c.JSON(500, gin.H{"message": "Gagal insert referensi mobile jkn", "error": err.Error()})
+	// 	return
+	// }
+
+	// if err := tx.Commit().Error; err != nil {
+	// 	c.JSON(500, gin.H{"message": "Gagal commit transaksi"})
+	// 	return
+	// }
+
+	var namaPoli string
+	err = db.Table("poliklinik").
+		Select("poliklinik.nm_poli").
+		Joins("JOIN maping_poli_bpjs ON maping_poli_bpjs.kd_poli_rs = poliklinik.kd_poli").
+		Where("maping_poli_bpjs.kd_poli_bpjs = ?", regAntrol.KodePoli).
+		Scan(&namaPoli).Error
+	if err != nil {
+		namaPoli = ""
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		c.JSON(500, gin.H{"message": "Gagal commit transaksi"})
+	var namaDokter string
+	err = db.Table("dokter").
+		Select("dokter.nm_dokter").
+		Joins("JOIN maping_dokter_dpjpvclaim ON maping_dokter_dpjpvclaim.kd_dokter = dokter.kd_dokter").
+		Where("maping_dokter_dpjpvclaim.kd_dokter_bpjs = ?", regAntrol.KodeDokter).
+		Scan(&namaDokter).Error
+	if err != nil {
+		namaDokter = ""
+	}
+
+	jenisPasien := "NON JKN"
+	if reg.Kdpj == "BPJ" {
+		jenisPasien = "JKN"
+	}
+
+	reqAntrol := bpjs.AntrolTambahRequest{
+		KodeBooking			: regAntrol.Nobooking,
+		JenisPasien			: jenisPasien,
+		NomorKartu			: regAntrol.NomorKartu,
+		Nik					: regAntrol.Nik,
+		NoHp				: regAntrol.NoHp,
+		KodePoli			: regAntrol.KodePoli,
+		NamaPoli			: namaPoli,
+		PasienBaru			: intFromInterface(regAntrol.PasienBaru),
+		Norm				: regAntrol.Norm,
+		TanggalPeriksa		: regAntrol.TanggalPeriksa,
+		KodeDokter			: intFromInterface(regAntrol.KodeDokter),
+		NamaDokter			: namaDokter,
+		JamPraktek			: regAntrol.JamPraktek,
+		JenisKunjungan		: intFromInterface(regAntrol.JenisKunjungan),
+		NomorReferensi		: regAntrol.NomorReferensi,
+		NomorAntrean		: regAntrol.NomorAntrean,
+		AngkaAntrean		: intFromInterface(regAntrol.AngkaAntrean),
+		EstimasiDilayani	: intFromInterface(regAntrol.EstimasiDilayani),
+		SisaKuotaJkn		: intFromInterface(regAntrol.SisaKuotaJkn),
+		KuotaJkn			: intFromInterface(regAntrol.KuotaJkn),
+		SisaKuotaNonJkn		: intFromInterface(regAntrol.SisaKuotaNonJkn),
+		KuotaNonJkn			: intFromInterface(regAntrol.KuotaNonJkn),
+		Keterangan			: "Peserta harap 30 menit lebih awal guna pencatatan administrasi.",
+	}
+
+	antrolData, antrolCode, antrolMsg, err := bpjs.TambahAntreanService(reqAntrol)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"code":    500,
+			"message": err.Error(),
+		})
+		return
+	}
+	
+	if antrolCode != 200 && antrolCode != 1 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    antrolCode,
+			"message": antrolMsg,
+		})
 		return
 	}
 
@@ -419,8 +484,12 @@ func PostData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code": 200,
-		"data": regAntrol,
-		"token": token,
+		"code"				: 200,
+		"message"			: "registrasi & antrean berhasil",
+		"data": gin.H{
+			"registrasi"	: regAntrol,
+			"antrean"		: antrolData,
+		},
+		"token"				: token,
 	})
 }

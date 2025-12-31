@@ -19,7 +19,7 @@ type ReferensiMobilejknBpjs struct {
 	EstimasiDilayani		string		`gorm:"column:estimasidilayani"`
 	SisaKuotaJkn			int			`gorm:"column:sisakuotajkn"`
 	KuotaJkn				int			`gorm:"column:kuotajkn"`
-	SisKuotaNonJkn			int			`gorm:"column:sisakuotanonjkn"`
+	SisaKuotaNonJkn			int			`gorm:"column:sisakuotanonjkn"`
 	KuotaNonJkn				int			`gorm:"column:kuotanonjkn"`
 	Status					string		`gorm:"column:status"`
 	Validasi				string		`gorm:"column:validasi"`

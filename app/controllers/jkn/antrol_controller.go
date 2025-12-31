@@ -432,39 +432,16 @@ func RefPasienFingerpoli(c *gin.Context) {
 }
 
 func TambahAntrean(c *gin.Context) {
-	var req struct {
-		KodeBooking         string 	`json:"kodebooking" binding:"required"`
-		JenisPasien         string 	`json:"jenispasien" binding:"required"`
-		NomorKartu          string 	`json:"nomorkartu" binding:"required"`
-		Nik                 string 	`json:"nik" binding:"required"`
-		NoHp                string 	`json:"nohp" binding:"required"`
-		KodePoli            string 	`json:"kodepoli" binding:"required"`
-		NamaPoli            string 	`json:"namapoli" binding:"required"`
-		PasienBaru			int		`json:"pasienbaru" binding:"oneof=0 1"`
-		Norm                string 	`json:"norm" binding:"required"`
-		TanggalPeriksa      string 	`json:"tanggalperiksa" binding:"required"`
-		KodeDokter          int    	`json:"kodedokter" binding:"required"`
-		NamaDokter          string 	`json:"namadokter" binding:"required"`
-		JamPraktek          string 	`json:"jampraktek" binding:"required"`
-		JenisKunjungan      int   	`json:"jeniskunjungan" binding:"required"`
-		NomorReferensi      string 	`json:"nomorreferensi" binding:"required"`
-		NomorAntrean        string 	`json:"nomorantrean" binding:"required"`
-		AngkaAntrean        int    	`json:"angkaantrean" binding:"required"`
-		EstimasiDilayani    int64  	`json:"estimasidilayani" binding:"required"`
-		SisaKuotaJkn        int    	`json:"sisakuotajkn" binding:"required"`
-		KuotaJkn            int    	`json:"kuotajkn" binding:"required"`
-		SisaKuotaNonJkn     int    	`json:"sisakuotanonjkn" binding:"required"`
-		KuotaNonJkn         int    	`json:"kuotanonjkn" binding:"required"`
-		Keterangan          string 	`json:"keterangan" binding:"required"`
-	}
+	var req bpjs.AntrolTambahRequest
 
+	// 1. Bind & validasi
 	if err := c.ShouldBindJSON(&req); err != nil {
 		if ve, ok := err.(validator.ValidationErrors); ok {
 
 			errorMessages := map[string]string{
 				"KodeBooking":      "kodebooking wajib diisi",
 				"JenisPasien":      "jenispasien wajib diisi",
-				"NomorKartu":       "jeniskartu wajib diisi",
+				"NomorKartu":       "nomorkartu wajib diisi",
 				"Nik":              "nik wajib diisi",
 				"NoHp":             "nohp wajib diisi",
 				"KodePoli":         "kodepoli wajib diisi",
@@ -487,7 +464,6 @@ func TambahAntrean(c *gin.Context) {
 				"Keterangan":       "keterangan wajib diisi",
 			}
 
-			// Ambil error pertama saja (sesuai standar BPJS)
 			fe := ve[0]
 			msg, ok := errorMessages[fe.Field()]
 			if !ok {
@@ -501,7 +477,6 @@ func TambahAntrean(c *gin.Context) {
 			return
 		}
 
-		// fallback jika bukan validation error
 		c.JSON(http.StatusOK, gin.H{
 			"code":    204,
 			"message": "request tidak valid",
@@ -509,75 +484,27 @@ func TambahAntrean(c *gin.Context) {
 		return
 	}
 
-	// 2. Load BPJS config
-	cfg, err := bpjs.LoadConfig()
+	data, code, message, err := bpjs.TambahAntreanService(req)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.JSON(500, gin.H{
 			"code":    500,
 			"message": err.Error(),
-			"data":    nil,
 		})
 		return
 	}
 
-	// 3. Request ke BPJS
-	res, ts, err := bpjs.DoRequest(
-		"POST",
-		"/antrean/add",
-		req,
-		cfg,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 4. Validasi metadata BPJS
-	if res.Metadata.Code != 200 && res.Metadata.Code != 1 {
+	if code != 200 && code != 1 {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    res.Metadata.Code,
-			"message": res.Metadata.Message,
-			"data":    nil,
+			"code":    code,
+			"message": message,
 		})
 		return
 	}
 
-	// 5. Decrypt response (TANPA LZSTRING)
-	plain, err := bpjs.DecryptResponse(
-		res.Response,
-		cfg.ConsID,
-		cfg.SecretKey,
-		ts,
-		false,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 6. Decode JSON
-	var data any
-	if err := json.Unmarshal([]byte(plain), &data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "JSON decode error: " + err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 7. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "Ok",
+		"message": "Pendaftaran antrean berhasil",
 		"data":    data,
 	})
 }
@@ -1029,12 +956,9 @@ func ListTaskid(c *gin.Context) {
 }
 
 func AntreanPerTanggal(c *gin.Context) {
-	// 1. Bind request
-	var req struct {
-		Tanggal string `json:"tanggal" binding:"required"`
-	}
+	var req bpjs.AntrolPerTanggalRequest
 
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil || req.Tanggal == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    400,
 			"message": "tanggal wajib diisi",
@@ -1043,72 +967,16 @@ func AntreanPerTanggal(c *gin.Context) {
 		return
 	}
 
-	// 2. Load BPJS config
-	cfg, err := bpjs.LoadConfig()
+	data, err := bpjs.AntreanPerTanggalService(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 3. Request ke BPJS
-	res, ts, err := bpjs.DoRequest(
-		"GET",
-		"/antrean/pendaftaran/tanggal/" + req.Tanggal,
-		req,
-		cfg,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 4. Validasi metadata BPJS
-	if res.Metadata.Code != 200 && res.Metadata.Code != 1 {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    res.Metadata.Code,
-			"message": res.Metadata.Message,
-			"data":    nil,
-		})
-		return
-	}
-
-	// 5. Decrypt response (TANPA LZSTRING)
-	plain, err := bpjs.DecryptResponse(
-		res.Response,
-		cfg.ConsID,
-		cfg.SecretKey,
-		ts,
-		true,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
+			"code":    204,
 			"message": err.Error(),
 			"data":    nil,
 		})
 		return
 	}
 
-	// 6. Decode JSON
-	var data any
-	if err := json.Unmarshal([]byte(plain), &data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "JSON decode error: " + err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	// 7. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "Ok",
