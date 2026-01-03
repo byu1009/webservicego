@@ -11,15 +11,18 @@ type RegPeriksa struct {
 	PJawab			*string		`gorm:"column:p_jawab"`
 	Almtpj			*string		`gorm:"column:almt_pj"`
 	Hubunganpj		*string		`gorm:"column:hubunganpj"`
-	BiayaReg	 	*int			`gorm:"column:biaya_reg"`
+	BiayaReg	 	*int		`gorm:"column:biaya_reg"`
 	Stts			*string		`gorm:"column:stts"`
 	SttsDaftar		string		`gorm:"column:stts_daftar"`
 	StatusLanjut	string		`gorm:"column:status_lanjut"`
 	Kdpj			string		`gorm:"column:kd_pj"`
-	Umurdaftar		*int			`gorm:"column:umurdaftar"`
+	Umurdaftar		*int		`gorm:"column:umurdaftar"`
 	Sttsumur		*string		`gorm:"column:sttsumur"`
 	Statusbayar		string		`gorm:"column:status_bayar"`
 	StatusPoli		string		`gorm:"column:status_poli"`
+
+	// RELASI
+	MobileJknBpjs *ReferensiMobilejknBpjs `gorm:"foreignKey:NoRawat;references:NoRawat"`
 }
 
 func (RegPeriksa) TableName() string {

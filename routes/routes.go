@@ -3,6 +3,7 @@ package routes
 import (
 	authController "webservicego/app/controllers/auth"
 	antrolController "webservicego/app/controllers/jkn"
+	taskidController "webservicego/app/controllers/jkn/taskid"
 	profileController "webservicego/app/controllers/profile"
 	registrasiController "webservicego/app/controllers/registrasi"
 	"webservicego/app/middlewares"
@@ -26,6 +27,12 @@ func SetupRoutes(r *gin.Engine) {
 		// REGISTRASI PENDAFTARAN
 		protected.POST("/registrasi/getdata", registrasiController.GetData)
 		protected.POST("/registrasi/postdata", registrasiController.PostData)
+		protected.POST("/registrasi/addantrian", registrasiController.AddAntrian)
+		protected.POST("/registrasi/batalantrian", registrasiController.BatalAntrian)
+		protected.POST("/registrasi/checkin", registrasiController.Checkin)
+
+		// TASKID INTERNAL
+		protected.POST("/jkn/taskid/post", taskidController.PostTaskid)
 
 		// SERVICE ANTROL BPJS KESEHATAN
 		protected.GET("/antrol/ref-poli", antrolController.RefPoli)

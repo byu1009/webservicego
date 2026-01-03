@@ -17,77 +17,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetData(c *gin.Context) {
-	var req struct {
-		TglAwal  string `json:"tglawal" binding:"required"`
-		TglAkhir string `json:"tglakhir" binding:"required"`
-	}
-
-	username := c.GetString("username")
-	if username == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "Unauthorized",
-		})
-		return
-	}
-
-	// Bind JSON
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("BindJSON error:", err)
-		c.JSON(400, gin.H{
-			"code":    400,
-			"message": "Parameter tglawal dan tglakhir wajib diisi atau JSON tidak valid",
-		})
-		return
-	}
-
-	// Parse tanggal dari JSON struct
-	start, err := time.Parse("2006-01-02", req.TglAwal) // pakai req.TglAwal
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Tanggal awal tidak valid"})
-		return
-	}
-
-	end, err := time.Parse("2006-01-02", req.TglAkhir) // pakai req.TglAkhir
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "message": "Tanggal akhir tidak valid"})
-		return
-	}
-
-	var data []models.RegPeriksa
-	db := config.DBConnect()
-
-	// Query GORM
-	if err := db.Where("tgl_registrasi BETWEEN ? AND ?", start.Format("2006-01-02"), end.Format("2006-01-02")).Find(&data).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Terjadi kesalahan"})
-		return
-	}
-
-	token, err := utils.GetToken(username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "Failed to generate token",
-		})
-		return
-	}
-
-	// Response JSON
-	c.JSON(http.StatusOK, gin.H{
-		"code"		: 200,
-		"message"	: "Data ada",
-		"data"		: data,
-		"token"		: token,
-	})
-}
-
 func PostData(c *gin.Context) {
 	db := config.DBConnect()
 
 	tx := db.Begin()
 	if tx.Error != nil {
-		c.JSON(500, gin.H{"message": "Gagal memulai transaksi"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Gagal memulai transaksi",
+		})
 		return
 	}
 
@@ -120,7 +58,10 @@ func PostData(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": 400,
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -135,28 +76,43 @@ func PostData(c *gin.Context) {
 	var pasien models.Pasien
 	if err := tx.First(&pasien, "no_rkm_medis = ?", req.NoRkmMedis).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusOK, gin.H{"code": 204, "message": "Pasien tidak ditemukan"})
+			c.JSON(http.StatusOK, gin.H{
+				"code": 204,
+				"message": "Pasien tidak ditemukan",
+			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"code": 500, "message": "Gagal mengambil data pasien"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Gagal mengambil data pasien",
+		})
 		return
 	}
 
 	umurStr, err := helpers.ToYMD(pasien.TglLahir)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "Format tanggal lahir pasien tidak valid"})
+		c.JSON(http.StatusOK, gin.H{
+			"code"		: 208,
+			"message"	: "Format tanggal lahir pasien tidak valid",
+		})
 		return
 	}
 
 	umurHit, err := helpers.HitungUmur(umurStr)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"message": "Gagal hitung umur"})
+		c.JSON(http.StatusOK, gin.H{
+			"code" : 208,
+			"message": "Gagal hitung umur",
+		})
 		return
 	}
 
 	umurSplit := strings.Fields(umurHit)
 	if len(umurSplit) < 2 {
-		c.JSON(http.StatusOK, gin.H{"message": "Format umur tidak valid"})
+		c.JSON(http.StatusOK, gin.H{
+			"code": 208,
+			"message": "Format umur tidak valid",
+		})
 		return
 	}
 	umurInt, _ := strconv.Atoi(umurSplit[0])
@@ -223,7 +179,10 @@ func PostData(c *gin.Context) {
 
 	hariPeriksa, err := helpers.TebakHari(req.TglPeriksa)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 204, "message": "Tanggal tidak valid"})
+		c.JSON(http.StatusOK, gin.H{
+			"code": 208,
+			"message": "Tanggal tidak valid",
+		})
 		return
 	}
 
@@ -252,37 +211,86 @@ func PostData(c *gin.Context) {
 
 	if err := tx.Create(&reg).Error; err != nil {
 		tx.Rollback()
-		c.JSON(500, gin.H{"message": "Gagal insert registrasi", "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Gagal insert registrasi",
+			"error": err.Error(),
+		})
 		return
 	}
 
 	// Query jadwal + pasien BPJS
 	sql := `
-	SELECT
-		rp.no_rawat,
-		p.no_peserta,
-		p.no_ktp,
-		p.no_tlp,
-		mp.kd_poli_bpjs,
-		IF((SELECT COUNT(*) FROM reg_periksa WHERE no_rkm_medis = p.no_rkm_medis)=0,'1','0') AS pasienbaru,
-		p.no_rkm_medis,
-		rp.tgl_registrasi,
-		md.kd_dokter_bpjs,
-		j.jam_mulai AS jammulai,
-		CONCAT(DATE_FORMAT(j.jam_mulai, '%H:%i'), '-', DATE_FORMAT(j.jam_selesai, '%H:%i')) AS jampraktek
-	FROM reg_periksa rp
-	JOIN pasien p ON rp.no_rkm_medis = p.no_rkm_medis
-	JOIN maping_dokter_dpjpvclaim md ON rp.kd_dokter = md.kd_dokter
-	JOIN maping_poli_bpjs mp ON rp.kd_poli = mp.kd_poli_rs
-	JOIN jadwal j ON j.kd_dokter = rp.kd_dokter
-		AND j.hari_kerja = ?
-	WHERE rp.no_rawat = ?
+		SELECT
+			rp.no_rawat,
+			p.no_peserta,
+			p.no_ktp,
+			p.no_tlp,
+			mp.kd_poli_bpjs,
+
+			/* pasien baru atau bukan */
+			IF(
+				(
+					SELECT COUNT(*)
+					FROM reg_periksa
+					WHERE no_rkm_medis = p.no_rkm_medis
+				) = 0, '1','0'
+			) AS pasienbaru,
+
+			p.no_rkm_medis,
+			rp.tgl_registrasi,
+			md.kd_dokter_bpjs,
+			j.jam_mulai AS jammulai,
+
+			CONCAT(
+				DATE_FORMAT(j.jam_mulai, '%H:%i'),
+				'-',
+				DATE_FORMAT(j.jam_selesai, '%H:%i')
+			) AS jampraktek,
+
+			j.kuota,
+
+			/* Hitung total kunjungan per tgl+poli+dokter */
+			(
+				SELECT COUNT(*)
+				FROM reg_periksa r2
+				WHERE r2.tgl_registrasi = rp.tgl_registrasi
+					AND r2.kd_poli        = rp.kd_poli
+					AND r2.kd_dokter      = rp.kd_dokter
+			) AS jumlah_kunjungan,
+
+			/* Hitung sisa kuota */
+			(
+				j.kuota -
+				(
+					SELECT COUNT(*)
+					FROM reg_periksa r2
+					WHERE r2.tgl_registrasi = rp.tgl_registrasi
+						AND r2.kd_poli        = rp.kd_poli
+						AND r2.kd_dokter      = rp.kd_dokter
+				)
+			) AS sisa_kuota
+
+		FROM reg_periksa rp
+		JOIN pasien p
+			ON rp.no_rkm_medis = p.no_rkm_medis
+		JOIN maping_dokter_dpjpvclaim md
+			ON rp.kd_dokter = md.kd_dokter
+		JOIN maping_poli_bpjs mp
+			ON rp.kd_poli = mp.kd_poli_rs
+		JOIN jadwal j
+			ON j.kd_dokter = rp.kd_dokter
+			AND j.hari_kerja = ?
+		WHERE rp.no_rawat = ?
 	`
 
 	rows, err := tx.Raw(sql, hariPeriksa, noRawat).Rows()
 	if err != nil {
 		tx.Rollback()
-		c.JSON(500, gin.H{"code": 500, "message": "Query gagal"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Query gagal",
+		})
 		return
 	}
 	defer rows.Close()
@@ -313,7 +321,10 @@ func PostData(c *gin.Context) {
 
 	if len(results) == 0 {
 		tx.Rollback()
-		c.JSON(500, gin.H{"message": "Data jadwal tidak ditemukan"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Data jadwal tidak ditemukan",
+		})
 		return
 	}
 
@@ -333,14 +344,21 @@ func PostData(c *gin.Context) {
 	estimasiMs, err := helpers.HitungEstimasiLayanan(req.TglPeriksa, jammulaiStr, noReg, config.EstimasiLayan)
 	if err != nil {
 		tx.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code" : 500,
+			"message": err.Error(),
+		})
 		return
 	}
 
 	noBooking, err := helpers.GenerateNobooking(tx, req.TglPeriksa)
 	if err != nil {
 		tx.Rollback()
-		c.JSON(500, gin.H{"message": "Gagal generate nomor rawat", "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code" : 500,
+			"message": "Gagal generate nomor rawat",
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -371,6 +389,9 @@ func PostData(c *gin.Context) {
 		}
 	}
 
+	// c.JSON(200, gin.H{"data" : results})
+	// return
+
 	regAntrol := models.ReferensiMobilejknBpjs{
 		Nobooking:         	noBooking,
 		NoRawat:           	reg.NoRawat,
@@ -397,16 +418,23 @@ func PostData(c *gin.Context) {
 		StatusKirim: 		"Belum",
 	}
 
-	// if err := tx.Create(&regAntrol).Error; err != nil {
-	// 	tx.Rollback()
-	// 	c.JSON(500, gin.H{"message": "Gagal insert referensi mobile jkn", "error": err.Error()})
-	// 	return
-	// }
+	if err := tx.Create(&regAntrol).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":500,
+			"message": "Gagal insert referensi mobile jkn",
+			"error": err.Error(),
+		})
+		return
+	}
 
-	// if err := tx.Commit().Error; err != nil {
-	// 	c.JSON(500, gin.H{"message": "Gagal commit transaksi"})
-	// 	return
-	// }
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code" : 500,
+			"message": "Gagal commit transaksi",
+		})
+		return
+	}
 
 	var namaPoli string
 	err = db.Table("poliklinik").
@@ -462,7 +490,7 @@ func PostData(c *gin.Context) {
 	antrolData, antrolCode, antrolMsg, err := bpjs.TambahAntreanService(reqAntrol)
 
 	if err != nil {
-		c.JSON(500, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
 			"message": err.Error(),
 		})
@@ -472,15 +500,39 @@ func PostData(c *gin.Context) {
 	if antrolCode != 200 && antrolCode != 1 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    antrolCode,
-			"message": antrolMsg,
+			"message": "registrasi berhasil & antrian bpjs gagal dikirim",
+			"messagebpjs": antrolMsg,
 		})
 		return
 	}
 
 	token, err := utils.GetToken(username)
 	if err != nil {
-		c.JSON(500, gin.H{"code": 500, "message": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": "Failed to generate token",
+		})
 		return
+	}
+
+	err = db.Model(&models.ReferensiMobilejknBpjs{}).
+			Where("nobooking = ?", regAntrol.Nobooking).
+			Updates(map[string]interface{}{
+				"status":        "Checkin",
+				"validasi":      time.Now().Format("2006-01-02 15:04:05"),
+				"status_kirim":  "Sudah",
+			}).Error
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code"				: 201,
+			"message"			: "registrasi & antrean berhasil & Gagal update status",
+			"data": gin.H{
+				"registrasi"	: regAntrol,
+				"antrean"		: antrolData,
+			},
+			"token"				: token,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{

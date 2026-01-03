@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"webservicego/app/models"
+	"webservicego/config"
 
 	"gorm.io/gorm"
 )
@@ -189,6 +190,7 @@ func GenerateNobooking(db *gorm.DB, tglPeriksa string) (string, error) {
     err = db.Model(&models.ReferensiMobilejknBpjs{}).
         Select("nobooking").
         Where("tanggalperiksa = ?", tglPeriksa).
+		Where("status != ?", "Batal").
         Order("nobooking DESC").
         Limit(1).
         Scan(&lastNobooking).Error
@@ -208,4 +210,66 @@ func GenerateNobooking(db *gorm.DB, tglPeriksa string) (string, error) {
     newNum := lastNum + 1
     noBooking := fmt.Sprintf("%s%06d", date.Format("20060102"), newNum)
     return noBooking, nil
+}
+
+func NowUTC() time.Time {
+	return time.Now().UTC()
+}
+
+func ToJakarta(t time.Time) time.Time {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	return t.In(loc)
+}
+
+func StrToIntE(s string) (int, error) {
+	i, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0, err
+	}
+	return i, nil
+}
+
+func NowMillis() int64 {
+	return time.Now().UnixMilli()
+}
+
+func NowMillisWIB() int64 {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	return time.Now().In(loc).UnixMilli()
+}
+
+func ParseToMillis(datetime string, layout string) (int64, error) {
+	t, err := time.Parse(layout, datetime)
+	if err != nil {
+		return 0, err
+	}
+	return t.UnixMilli(), nil
+}
+
+func ParseToMillisWIB(datetime string, layout string) (int64, error) {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	t, err := time.ParseInLocation(layout, datetime, loc)
+	if err != nil {
+		return 0, err
+	}
+	return t.UnixMilli(), nil
+}
+
+func CekNoRef(noRawat string) (string, error) {
+	db := config.DBConnect()
+
+	var ref models.ReferensiMobilejknBpjs
+	err := db.Where("no_rawat = ? AND status != ?", noRawat, "Batal").
+		First(&ref).Error
+
+	if err != nil {
+		if err.Error() == "record not found" || err == gorm.ErrRecordNotFound {
+			// jika tidak ada, kembalikan noRawat sendiri
+			return noRawat, nil
+		}
+		// jika error DB lain
+		return "", err
+	}
+
+	return ref.Nobooking, nil
 }
