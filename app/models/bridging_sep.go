@@ -1,7 +1,7 @@
 package models
 
 type BridgingSep struct {
-	NoSep					string	`gorm:"column:no_sep;primaryKey"`
+	NoSep  					string	`gorm:"column:no_sep;primaryKey"`
 	NoRawat					string	`gorm:"column:no_rawat"`
 	TglSep					string	`gorm:"column:tgl_sep"`
 	TglRujukan				string	`gorm:"column:tglrujukan"`
@@ -44,7 +44,7 @@ type BridgingSep struct {
 	NmKab					string	`gorm:"column:nmkab"`
 	KdKec					string	`gorm:"column:kdkec"`
 	NmKec					string	`gorm:"column:nmkec"`
-	NoSkdp					string	`gorm:"column:noskdp"`
+	NoSkdp					string	`gorm:"column:noskdp;index"`
 	KdDpjp					string	`gorm:"column:kddpjp"`
 	NmDpjp					string	`gorm:"column:nmdpjp"`
 	TujuanKunjungan			string	`gorm:"column:tujuankunjungan"`

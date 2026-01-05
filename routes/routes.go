@@ -4,6 +4,7 @@ import (
 	authController "webservicego/app/controllers/auth"
 	antrolController "webservicego/app/controllers/jkn/antrol"
 	taskidController "webservicego/app/controllers/jkn/antrol/taskid"
+	surkonController "webservicego/app/controllers/jkn/vclaim/rencanakontrol"
 	profileController "webservicego/app/controllers/profile"
 	registrasiController "webservicego/app/controllers/registrasi"
 	"webservicego/app/middlewares"
@@ -46,6 +47,10 @@ func SetupRoutes(r *gin.Engine) {
 		protected.POST("/antrol/tambah-antrean-farmasi", antrolController.TambahAntreanFarmasi)
 		protected.POST("/antrol/update-waktu-antrean", antrolController.UpdateWaktuAntrean)
 		protected.POST("/antrol/batal-antrean", antrolController.BatalAntrean)
+
+		// VCLAIM
+		// SURKON
+		protected.POST("/jkn/surkon/getdata", surkonController.SurkonInternal)
 
 		protected.POST("/antrol/list-taskid", antrolController.ListTaskid)
 		
