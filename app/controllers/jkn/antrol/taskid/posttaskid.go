@@ -40,7 +40,6 @@ func PostTaskid (c *gin.Context) {
 	var req struct {
 		KodeBooking		string 	`json:"kodebooking" binding:"required"`
 		Taskid			int		`json:"taskid" binding:"required"`
-		// Waktu			string	`json:"waktu" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -48,7 +47,6 @@ func PostTaskid (c *gin.Context) {
 			errorMessages := map[string]string{
 				"KodeBooking"	: "kodebooking wajib diisi",
 				"Taskid"		: "taskid wajib diisi",
-				// "Waktu"			: "waktu wajib diisi",
 			}
 
 			fe := ve[0]
@@ -73,31 +71,15 @@ func PostTaskid (c *gin.Context) {
 
 	twaktu := helpers.NowUTC()
 	taskid := req.Taskid
-	refKbo := req.KodeBooking
-	
-	// // format1 := regexp.MustCompile(`^\d{4}\/\d{2}\/\d{2}\/\d{6}$`)
-	// // format2 := regexp.MustCompile(`^\d{14}$`)
-
-
-	// switch {
-	// 	case format1.MatchString(req.KodeBooking):
-	// 		refKbo = "a/a"
-
-	// 	case format2.MatchString(req.KodeBooking):
-	// 		refKbo = "aa"
-
-	// 	default:
-	// 		c.JSON(http.StatusBadRequest, gin.H{
-	// 			"code":    400,
-	// 			"message": "Format kodebooking tidak sesuai",
-	// 		})
-	// 	return
-	// }
-
-	// c.JSON(http.StatusOK, gin.H{
-	// 	"code":   200,
-	// 	"refKbo": refKbo,
-	// })
+	refKbo, err := helpers.CekNoRef(req.KodeBooking)
+	if err != nil {
+		// handle error
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"message": err.Error(),
+		})
+		return
+	}
 
 	var task models.IoAntrianTaskid
 

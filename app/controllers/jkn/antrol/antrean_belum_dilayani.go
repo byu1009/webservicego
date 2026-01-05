@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -6,46 +6,9 @@ import (
 	"webservicego/app/services/bpjs"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
-func RefPasienFingerpoli(c *gin.Context) {
-	// 1. Bind request
-	var req struct {
-		JenisIdentitas	string `json:"jenisidentitas" binding:"required"`
-		NoIdentitas		string `json:"noidentitas" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-
-		// ambil error validator
-		if ve, ok := err.(validator.ValidationErrors); ok {
-			for _, fe := range ve {
-				switch fe.Field() {
-				case "JenisIdentitas":
-					c.JSON(http.StatusOK, gin.H{
-						"code"		: 204,
-						"message"	: "jenisidentitas wajib diisi",
-					})
-					return
-				case "NoIdentitas":
-					c.JSON(http.StatusOK, gin.H{
-						"code"		: 204,
-						"message"	: "noidentitas wajib diisi",
-					})
-					return
-				}
-			}
-		}
-
-		// fallback error
-		c.JSON(http.StatusOK, gin.H{
-			"code"		: 204,
-			"message"	: "request tidak valid",
-		})
-		return
-	}
-
+func AntreanBelumDilayani(c *gin.Context) {
 	// 2. Load BPJS config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
@@ -59,9 +22,9 @@ func RefPasienFingerpoli(c *gin.Context) {
 
 	// 3. Request ke BPJS
 	res, ts, err := bpjs.DoRequest(
-		"POST",
-		"/antrean/getlisttask",
-		req,
+		"GET",
+		"/antrean/pendaftaran/aktif",
+		nil,
 		cfg,
 	)
 	if err != nil {

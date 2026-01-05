@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"net/http"
@@ -8,16 +8,16 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func BatalAntrean(c *gin.Context) {
-	// 1. Validasi request
-	var req bpjs.AntrolBatalRequest
+func UpdateWaktuAntrean(c *gin.Context) {
+	var req bpjs.AntrolUpdateWaktuRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-
 		if ve, ok := err.(validator.ValidationErrors); ok {
+
 			errorMessages := map[string]string{
 				"KodeBooking": "kodebooking wajib diisi",
-				"Keterangan":  "keterangan wajib diisi",
+				"Taskid":      "taskid wajib diisi",
+				"Waktu":       "waktu wajib diisi",
 			}
 
 			fe := ve[0]
@@ -40,7 +40,20 @@ func BatalAntrean(c *gin.Context) {
 		return
 	}
 
-	data, code, message, err := bpjs.BatalAntreanService(req)
+	if req.JenisResep != "" {
+		switch req.JenisResep {
+		case "Tidak ada", "Racikan", "Non racikan":
+			// valid
+		default:
+			c.JSON(http.StatusOK, gin.H{
+				"code":    204,
+				"message": "jenisresep harus: Tidak ada, Racikan, atau Non racikan",
+			})
+			return
+		}
+	}
+
+	data, code, message, err := bpjs.UpdateWaktuAntreanService(req)
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -60,7 +73,7 @@ func BatalAntrean(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "Antran " + req.KodeBooking + " berhasil dibatalkan",
+		"message": "Update waktu " + req.TaskId + " berhasil",
 		"data":    data,
 	})
 }

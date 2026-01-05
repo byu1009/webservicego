@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -6,9 +6,45 @@ import (
 	"webservicego/app/services/bpjs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
-func RefPoli(c *gin.Context) {
+func JadwalDokter(c *gin.Context) {
+	var req struct {
+		KodePoli string `json:"kodepoli" binding:"required"`
+		Tanggal  string `json:"tanggal" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+
+		// ambil error validator
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			for _, fe := range ve {
+				switch fe.Field() {
+				case "KodePoli":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "kodepoli wajib diisi",
+					})
+					return
+				case "Tanggal":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "tanggal wajib diisi",
+					})
+					return
+				}
+			}
+		}
+
+		// fallback error
+		c.JSON(http.StatusOK, gin.H{
+			"code"		: 204,
+			"message"	: "request tidak valid",
+		})
+		return
+	}
+
 	// 1. Load config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
@@ -21,7 +57,7 @@ func RefPoli(c *gin.Context) {
 	}
 
 	// 2. Request ke BPJS
-	res, ts, err := bpjs.DoRequest("GET", "/ref/poli", nil, cfg)
+	res, ts, err := bpjs.DoRequest("GET", "/jadwaldokter/kodepoli/" + req.KodePoli + "/tanggal/" + req.Tanggal, nil, cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -32,7 +68,7 @@ func RefPoli(c *gin.Context) {
 	}
 
 	// 3. Validasi metadata BPJS
-	if res.Metadata.Code != 1 {
+	if res.Metadata.Code != 200 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    res.Metadata.Code,
 			"message": res.Metadata.Message,

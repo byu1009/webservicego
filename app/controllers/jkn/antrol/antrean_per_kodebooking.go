@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -8,8 +8,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RefFingerpoli(c *gin.Context) {
-	// 1. Load config
+func AntreanPerKodebooking(c *gin.Context) {
+	// 1. Bind request
+	var req struct {
+		KodeBooking string `json:"kodebooking" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "kodebooking wajib diisi",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 2. Load BPJS config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -20,8 +34,13 @@ func RefFingerpoli(c *gin.Context) {
 		return
 	}
 
-	// 2. Request ke BPJS
-	res, ts, err := bpjs.DoRequest("GET", "/ref/poli/fp", nil, cfg)
+	// 3. Request ke BPJS
+	res, ts, err := bpjs.DoRequest(
+		"GET",
+		"/antrean/pendaftaran/kodebooking/" + req.KodeBooking,
+		req,
+		cfg,
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -31,8 +50,8 @@ func RefFingerpoli(c *gin.Context) {
 		return
 	}
 
-	// 3. Validasi metadata BPJS
-	if res.Metadata.Code != 1 {
+	// 4. Validasi metadata BPJS
+	if res.Metadata.Code != 200 && res.Metadata.Code != 1 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    res.Metadata.Code,
 			"message": res.Metadata.Message,
@@ -41,7 +60,7 @@ func RefFingerpoli(c *gin.Context) {
 		return
 	}
 
-	// 4. Decrypt response (PAKAI LZSTRING)
+	// 5. Decrypt response (TANPA LZSTRING)
 	plain, err := bpjs.DecryptResponse(
 		res.Response,
 		cfg.ConsID,
@@ -58,7 +77,7 @@ func RefFingerpoli(c *gin.Context) {
 		return
 	}
 
-	// 5. Decode JSON hasil decrypt
+	// 6. Decode JSON
 	var data any
 	if err := json.Unmarshal([]byte(plain), &data); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -69,7 +88,7 @@ func RefFingerpoli(c *gin.Context) {
 		return
 	}
 
-	// 6. Response sukses
+	// 7. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "Ok",

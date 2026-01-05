@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -6,46 +6,24 @@ import (
 	"webservicego/app/services/bpjs"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
-func JadwalDokter(c *gin.Context) {
+func ListTaskid(c *gin.Context) {
+	// 1. Bind request
 	var req struct {
-		KodePoli string `json:"kodepoli" binding:"required"`
-		Tanggal  string `json:"tanggal" binding:"required"`
+		KodeBooking string `json:"kodebooking" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-
-		// ambil error validator
-		if ve, ok := err.(validator.ValidationErrors); ok {
-			for _, fe := range ve {
-				switch fe.Field() {
-				case "KodePoli":
-					c.JSON(http.StatusOK, gin.H{
-						"code"		: 204,
-						"message"	: "kodepoli wajib diisi",
-					})
-					return
-				case "Tanggal":
-					c.JSON(http.StatusOK, gin.H{
-						"code"		: 204,
-						"message"	: "tanggal wajib diisi",
-					})
-					return
-				}
-			}
-		}
-
-		// fallback error
-		c.JSON(http.StatusOK, gin.H{
-			"code"		: 204,
-			"message"	: "request tidak valid",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "kodebooking wajib diisi",
+			"data":    nil,
 		})
 		return
 	}
 
-	// 1. Load config
+	// 2. Load BPJS config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -56,8 +34,13 @@ func JadwalDokter(c *gin.Context) {
 		return
 	}
 
-	// 2. Request ke BPJS
-	res, ts, err := bpjs.DoRequest("GET", "/jadwaldokter/kodepoli/" + req.KodePoli + "/tanggal/" + req.Tanggal, nil, cfg)
+	// 3. Request ke BPJS
+	res, ts, err := bpjs.DoRequest(
+		"POST",
+		"/antrean/getlisttask",
+		req,
+		cfg,
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -67,8 +50,8 @@ func JadwalDokter(c *gin.Context) {
 		return
 	}
 
-	// 3. Validasi metadata BPJS
-	if res.Metadata.Code != 200 {
+	// 4. Validasi metadata BPJS
+	if res.Metadata.Code != 200 && res.Metadata.Code != 1 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    res.Metadata.Code,
 			"message": res.Metadata.Message,
@@ -77,7 +60,7 @@ func JadwalDokter(c *gin.Context) {
 		return
 	}
 
-	// 4. Decrypt response (PAKAI LZSTRING)
+	// 5. Decrypt response (TANPA LZSTRING)
 	plain, err := bpjs.DecryptResponse(
 		res.Response,
 		cfg.ConsID,
@@ -94,7 +77,7 @@ func JadwalDokter(c *gin.Context) {
 		return
 	}
 
-	// 5. Decode JSON hasil decrypt
+	// 6. Decode JSON
 	var data any
 	if err := json.Unmarshal([]byte(plain), &data); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -105,7 +88,7 @@ func JadwalDokter(c *gin.Context) {
 		return
 	}
 
-	// 6. Response sukses
+	// 7. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "Ok",

@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RefDokter(c *gin.Context) {
+func RefFingerpoli(c *gin.Context) {
 	// 1. Load config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
@@ -21,7 +21,7 @@ func RefDokter(c *gin.Context) {
 	}
 
 	// 2. Request ke BPJS
-	res, ts, err := bpjs.DoRequest("GET", "/ref/dokter", nil, cfg)
+	res, ts, err := bpjs.DoRequest("GET", "/ref/poli/fp", nil, cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,

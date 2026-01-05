@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AntreanBelumDilayani(c *gin.Context) {
-	// 2. Load BPJS config
+func RefPoli(c *gin.Context) {
+	// 1. Load config
 	cfg, err := bpjs.LoadConfig()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -20,13 +20,8 @@ func AntreanBelumDilayani(c *gin.Context) {
 		return
 	}
 
-	// 3. Request ke BPJS
-	res, ts, err := bpjs.DoRequest(
-		"GET",
-		"/antrean/pendaftaran/aktif",
-		nil,
-		cfg,
-	)
+	// 2. Request ke BPJS
+	res, ts, err := bpjs.DoRequest("GET", "/ref/poli", nil, cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    500,
@@ -36,8 +31,8 @@ func AntreanBelumDilayani(c *gin.Context) {
 		return
 	}
 
-	// 4. Validasi metadata BPJS
-	if res.Metadata.Code != 200 && res.Metadata.Code != 1 {
+	// 3. Validasi metadata BPJS
+	if res.Metadata.Code != 1 {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    res.Metadata.Code,
 			"message": res.Metadata.Message,
@@ -46,7 +41,7 @@ func AntreanBelumDilayani(c *gin.Context) {
 		return
 	}
 
-	// 5. Decrypt response (TANPA LZSTRING)
+	// 4. Decrypt response (PAKAI LZSTRING)
 	plain, err := bpjs.DecryptResponse(
 		res.Response,
 		cfg.ConsID,
@@ -63,7 +58,7 @@ func AntreanBelumDilayani(c *gin.Context) {
 		return
 	}
 
-	// 6. Decode JSON
+	// 5. Decode JSON hasil decrypt
 	var data any
 	if err := json.Unmarshal([]byte(plain), &data); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -74,7 +69,7 @@ func AntreanBelumDilayani(c *gin.Context) {
 		return
 	}
 
-	// 7. Response sukses
+	// 6. Response sukses
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "Ok",

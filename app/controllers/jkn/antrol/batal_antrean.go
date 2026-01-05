@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"net/http"
@@ -8,16 +8,16 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func UpdateWaktuAntrean(c *gin.Context) {
-	var req bpjs.AntrolUpdateWaktuRequest
+func BatalAntrean(c *gin.Context) {
+	// 1. Validasi request
+	var req bpjs.AntrolBatalRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		if ve, ok := err.(validator.ValidationErrors); ok {
 
+		if ve, ok := err.(validator.ValidationErrors); ok {
 			errorMessages := map[string]string{
 				"KodeBooking": "kodebooking wajib diisi",
-				"Taskid":      "taskid wajib diisi",
-				"Waktu":       "waktu wajib diisi",
+				"Keterangan":  "keterangan wajib diisi",
 			}
 
 			fe := ve[0]
@@ -40,20 +40,7 @@ func UpdateWaktuAntrean(c *gin.Context) {
 		return
 	}
 
-	if req.JenisResep != "" {
-		switch req.JenisResep {
-		case "Tidak ada", "Racikan", "Non racikan":
-			// valid
-		default:
-			c.JSON(http.StatusOK, gin.H{
-				"code":    204,
-				"message": "jenisresep harus: Tidak ada, Racikan, atau Non racikan",
-			})
-			return
-		}
-	}
-
-	data, code, message, err := bpjs.UpdateWaktuAntreanService(req)
+	data, code, message, err := bpjs.BatalAntreanService(req)
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -73,7 +60,7 @@ func UpdateWaktuAntrean(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "Update waktu " + req.TaskId + " berhasil",
+		"message": "Antran " + req.KodeBooking + " berhasil dibatalkan",
 		"data":    data,
 	})
 }

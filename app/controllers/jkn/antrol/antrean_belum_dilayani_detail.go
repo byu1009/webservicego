@@ -1,24 +1,61 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"webservicego/app/services/bpjs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
-func AntreanPerKodebooking(c *gin.Context) {
+func AntreanBelumDilayaniDetail(c *gin.Context) {
 	// 1. Bind request
 	var req struct {
-		KodeBooking string `json:"kodebooking" binding:"required"`
+		KodePoli   string `json:"kodepoli" binding:"required"`
+		KodeDokter int    `json:"kodedokter" binding:"required"`
+		Hari       int    `json:"hari" binding:"required"`
+		JamPraktek string `json:"jampraktek" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "kodebooking wajib diisi",
-			"data":    nil,
+		// ambil error validator
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			for _, fe := range ve {
+				switch fe.Field() {
+				case "KodePoli":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "kodepoli wajib diisi",
+					})
+					return
+				case "KodeDokter":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "kodedokter wajib diisi",
+					})
+					return
+				case "Hari":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "hari wajib diisi",
+					})
+					return
+				case "JamPraktek":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "jampraktek wajib diisi",
+					})
+					return
+				}
+			}
+		}
+
+		// fallback error
+		c.JSON(http.StatusOK, gin.H{
+			"code"		: 204,
+			"message"	: "request tidak valid",
 		})
 		return
 	}
@@ -37,8 +74,8 @@ func AntreanPerKodebooking(c *gin.Context) {
 	// 3. Request ke BPJS
 	res, ts, err := bpjs.DoRequest(
 		"GET",
-		"/antrean/pendaftaran/kodebooking/" + req.KodeBooking,
-		req,
+		"/antrean/pendaftaran/kodepoli/" + req.KodePoli + "/kodedokter/" + strconv.Itoa(req.KodeDokter) + "/hari/" + strconv.Itoa(req.Hari) + "/jampraktek/" + req.JamPraktek,
+		nil,
 		cfg,
 	)
 	if err != nil {

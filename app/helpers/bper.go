@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -212,6 +213,30 @@ func GenerateNobooking(db *gorm.DB, tglPeriksa string) (string, error) {
     return noBooking, nil
 }
 
+func CekNoRef(noRawat string) (string, error) {
+	db := config.DBConnect()
+
+	var ref models.ReferensiMobilejknBpjs
+
+	err := db.
+		Where("no_rawat = ? AND status != ?", noRawat, "Batal").
+		First(&ref).Error
+
+	// jika data tidak ditemukan
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return noRawat, nil
+	}
+
+	// jika error lain (koneksi, query, dll)
+	if err != nil {
+		return "", err
+	}
+
+	// jika data ditemukan
+	return ref.Nobooking, nil
+}
+
+
 func NowUTC() time.Time {
 	return time.Now().UTC()
 }
@@ -221,6 +246,10 @@ func ToJakarta(t time.Time) time.Time {
 	return t.In(loc)
 }
 
+//////////////////////////////////////////////////////
+// STRING & NUMBER
+//////////////////////////////////////////////////////
+
 func StrToIntE(s string) (int, error) {
 	i, err := strconv.Atoi(strings.TrimSpace(s))
 	if err != nil {
@@ -229,15 +258,26 @@ func StrToIntE(s string) (int, error) {
 	return i, nil
 }
 
+//////////////////////////////////////////////////////
+// NOW (TIME)
+//////////////////////////////////////////////////////
+
+// UTC sekarang dalam millisecond
 func NowMillis() int64 {
-	return time.Now().UnixMilli()
+	return time.Now().UTC().UnixMilli()
 }
 
+// WIB sekarang dalam millisecond
 func NowMillisWIB() int64 {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	return time.Now().In(loc).UnixMilli()
 }
 
+//////////////////////////////////////////////////////
+// PARSE STRING → MILLIS
+//////////////////////////////////////////////////////
+
+// Parse string datetime (UTC) ke millisecond
 func ParseToMillis(datetime string, layout string) (int64, error) {
 	t, err := time.Parse(layout, datetime)
 	if err != nil {
@@ -246,6 +286,7 @@ func ParseToMillis(datetime string, layout string) (int64, error) {
 	return t.UnixMilli(), nil
 }
 
+// Parse string datetime WIB ke millisecond
 func ParseToMillisWIB(datetime string, layout string) (int64, error) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	t, err := time.ParseInLocation(layout, datetime, loc)
@@ -255,21 +296,24 @@ func ParseToMillisWIB(datetime string, layout string) (int64, error) {
 	return t.UnixMilli(), nil
 }
 
-func CekNoRef(noRawat string) (string, error) {
-	db := config.DBConnect()
+//////////////////////////////////////////////////////
+// TIME ZONE CONVERTER
+//////////////////////////////////////////////////////
 
-	var ref models.ReferensiMobilejknBpjs
-	err := db.Where("no_rawat = ? AND status != ?", noRawat, "Batal").
-		First(&ref).Error
+// Convert time ke WIB (time.Time)
+func ToJakartaTime(t time.Time) time.Time {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	return t.In(loc)
+}
 
-	if err != nil {
-		if err.Error() == "record not found" || err == gorm.ErrRecordNotFound {
-			// jika tidak ada, kembalikan noRawat sendiri
-			return noRawat, nil
-		}
-		// jika error DB lain
-		return "", err
-	}
+// Convert time ke WIB → string (Y-m-d H:i:s)
+func ToJakartaString(t time.Time) string {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	return t.In(loc).Format("2006-01-02 15:04:05")
+}
 
-	return ref.Nobooking, nil
+// Convert time ke WIB → millisecond (INI YANG KAMU BUTUHKAN)
+func ToJakartaMillis(t time.Time) int64 {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	return t.In(loc).UnixMilli()
 }

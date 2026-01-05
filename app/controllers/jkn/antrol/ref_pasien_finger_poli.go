@@ -1,4 +1,4 @@
-package jkn
+package antrol
 
 import (
 	"encoding/json"
@@ -6,19 +6,42 @@ import (
 	"webservicego/app/services/bpjs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
-func ListTaskid(c *gin.Context) {
+func RefPasienFingerpoli(c *gin.Context) {
 	// 1. Bind request
 	var req struct {
-		KodeBooking string `json:"kodebooking" binding:"required"`
+		JenisIdentitas	string `json:"jenisidentitas" binding:"required"`
+		NoIdentitas		string `json:"noidentitas" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "kodebooking wajib diisi",
-			"data":    nil,
+
+		// ambil error validator
+		if ve, ok := err.(validator.ValidationErrors); ok {
+			for _, fe := range ve {
+				switch fe.Field() {
+				case "JenisIdentitas":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "jenisidentitas wajib diisi",
+					})
+					return
+				case "NoIdentitas":
+					c.JSON(http.StatusOK, gin.H{
+						"code"		: 204,
+						"message"	: "noidentitas wajib diisi",
+					})
+					return
+				}
+			}
+		}
+
+		// fallback error
+		c.JSON(http.StatusOK, gin.H{
+			"code"		: 204,
+			"message"	: "request tidak valid",
 		})
 		return
 	}
